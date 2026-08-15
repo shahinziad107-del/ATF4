@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (err) {
                 console.error('Telegram Send Error:', err);
-                showFormStatus('❌ حدث خطأ أثناء الإرسال: ' + (err.message || 'يرجى التأكد من الاتصال أو التواصل عبر الواتساب.'), false);
+                showFormStatus(`❌ تعذر الإرسال التلقائي عبر المتصفح: (${err.message}).<br><a href="https://t.me/AtF_22_bot" target="_blank" style="color:#60a5fa;text-decoration:underline;margin-top:0.5rem;display:inline-block;">اضغط هنا لتأكيد الحجز فوراً عبر التليجرام 📲</a>`, false);
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
