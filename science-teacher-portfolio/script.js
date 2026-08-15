@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Chat ID format: "123456789" or "-100123456789"
         // =========================================================================
         const TELEGRAM_BOT_TOKEN = '8934848544:AAFtQ0l0aBlkjHN0qY2ISZeuy0QrHOWqhFM';
-        const TELEGRAM_CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID';
+        const TELEGRAM_CHAT_ID = '7226362241';
 
         const formStatus = document.getElementById('formStatus');
 
