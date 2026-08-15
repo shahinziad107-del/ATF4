@@ -298,14 +298,107 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // ==================== CONTACT FORM ====================
+    // ==================== CONTACT FORM (TELEGRAM BOT INTEGRATION) ====================
     const contactForm = document.querySelector('#contactForm');
     if (contactForm) {
-        contactForm.addEventListener('submit', (e) => {
+        // =========================================================================
+        // TELEGRAM BOT CONFIGURATION
+        // Replace TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID with Mr. Atef's credentials:
+        // Bot Token format: "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+        // Chat ID format: "123456789" or "-100123456789"
+        // =========================================================================
+        const TELEGRAM_BOT_TOKEN = '8934848544:AAFtQ0l0aBlkjHN0qY2ISZeuy0QrHOWqhFM';
+        const TELEGRAM_CHAT_ID = 'YOUR_TELEGRAM_CHAT_ID';
+
+        const formStatus = document.getElementById('formStatus');
+
+        function showFormStatus(msg, isSuccess = true) {
+            if (!formStatus) return;
+            formStatus.style.display = 'block';
+            if (isSuccess) {
+                formStatus.style.background = 'rgba(34, 197, 94, 0.15)';
+                formStatus.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+                formStatus.style.color = '#4ade80';
+            } else {
+                formStatus.style.background = 'rgba(239, 68, 68, 0.15)';
+                formStatus.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                formStatus.style.color = '#f87171';
+            }
+            formStatus.innerHTML = msg;
+        }
+
+        contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            alert('تم استلام رسالتك بنجاح! سيتم التواصل مع أولياء الأمور والطلاب في أقرب وقت ممكن.');
-            contactForm.reset();
+
+            const studentName = document.getElementById('studentName')?.value.trim();
+            const parentName = document.getElementById('parentName')?.value.trim();
+            const phone = document.getElementById('phone')?.value.trim();
+            const grade = document.getElementById('grade')?.value.trim();
+            const message = document.getElementById('message')?.value.trim();
+
+            const submitBtn = contactForm.querySelector('button[type="submit"]');
+            const originalBtnContent = submitBtn ? submitBtn.innerHTML : '';
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.7';
+                submitBtn.innerHTML = '<span>جاري الإرسال للتليجرام...</span><span class="spin-icon">⏳</span>';
+            }
+
+            if (formStatus) formStatus.style.display = 'none';
+
+            // Construct Telegram HTML message format
+            const telegramText = 
+                `📩 <b>طلب حجز حادي/جديد — الأستاذ عاطف</b>\n\n` +
+                `👨‍🎓 <b>اسم الطالب:</b> ${studentName}\n` +
+                `👤 <b>اسم ولي الأمر:</b> ${parentName}\n` +
+                `📱 <b>رقم الهاتف / الواتساب:</b> <code>${phone}</code>\n` +
+                `📚 <b>الصف الدراسي:</b> ${grade}\n\n` +
+                `💬 <b>الرسالة / الاستفسار:</b>\n${message}\n\n` +
+                `⏰ <b>توقيت الطلب:</b> ${new Date().toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })}`;
+
+            try {
+                // If token or chat ID is not configured yet
+                if (TELEGRAM_BOT_TOKEN === 'YOUR_TELEGRAM_BOT_TOKEN' || TELEGRAM_CHAT_ID === 'YOUR_TELEGRAM_CHAT_ID') {
+                    console.log('Telegram Payload Demo:', telegramText);
+                    showFormStatus('✅ تم تجهيز الرسالة! (يرجى إدخال Bot Token و Chat ID الخاص بمستر عاطف كود JS لتصلك الإشعارات مباشرة على التليجرام)', true);
+                    contactForm.reset();
+                    return;
+                }
+
+                const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chat_id: TELEGRAM_CHAT_ID,
+                        text: telegramText,
+                        parse_mode: 'HTML'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.ok) {
+                    showFormStatus('✅ تم إرسال طلب الحجز بنجاح إلى تليجرام الأستاذ عاطف! سيتم التواصل معكم في أقرب وقت.', true);
+                    contactForm.reset();
+                } else {
+                    throw new Error(data.description || 'تعذر الإرسال عبر بوت تليجرام.');
+                }
+
+            } catch (err) {
+                console.error('Telegram Send Error:', err);
+                showFormStatus('❌ حدث خطأ أثناء الإرسال: ' + (err.message || 'يرجى التأكد من الاتصال أو التواصل عبر الواتساب.'), false);
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerHTML = originalBtnContent;
+                }
+            }
         });
     }
 
 });
+
