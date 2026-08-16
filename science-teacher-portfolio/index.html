@@ -738,6 +738,55 @@
         </div>
     </footer>
 
+    <!-- ==================== FLOATING SCIENCE ASSISTANT CHATBOT ==================== -->
+    <div id="portfolio-chatbot-widget" class="portfolio-chatbot-widget">
+        <button id="chatbot-toggle-btn" class="chatbot-toggle-btn" aria-label="مساعد العلوم الذكي">
+            <span class="chatbot-btn-badge">1</span>
+            <span class="chatbot-btn-icon">🤖</span>
+            <span class="chatbot-btn-text">مساعد العلوم الذكي</span>
+        </button>
+
+        <div id="chatbot-window" class="chatbot-window glass-card">
+            <div class="chatbot-header">
+                <div class="chatbot-header-info">
+                    <div class="chatbot-avatar">🔬</div>
+                    <div>
+                        <div class="chatbot-title">بوت الأستاذ عاطف (مساعد العلوم) ⚡</div>
+                        <div class="chatbot-subtitle"><span class="online-dot"></span> متصل الآن — رد تلقائي وحجز تليجرام</div>
+                    </div>
+                </div>
+                <button id="chatbot-close-btn" class="chatbot-close-btn">&times;</button>
+            </div>
+
+            <div id="chatbot-body" class="chatbot-body">
+                <div class="chatbot-message bot">
+                    <div class="msg-avatar">🤖</div>
+                    <div class="msg-content">
+                        أهلاً بك! أنا <b>البوت المساعد للأستاذ عاطف</b> 🔬<br>
+                        كيف يمكنني مساعدتك اليوم في منهج <b>علوم الصف الثالث الإعدادي</b>؟
+                    </div>
+                </div>
+            </div>
+
+            <div id="chatbot-suggestions" class="chatbot-suggestions">
+                <button class="chatbot-chip" data-question="طريقة الحجز والأماكن">📍 أماكن الشرح وطريقة الحجز</button>
+                <button class="chatbot-chip" data-question="تفاصيل المنهج">📚 تفاصيل منهج العلوم</button>
+                <button class="chatbot-chip" data-question="نظام المتابعة">📊 نظام المتابعة الرقمي</button>
+                <button class="chatbot-chip" data-question="تواصل تليجرام">📩 ارسل رسالة لتليجرام مستر عاطف</button>
+            </div>
+
+            <div class="chatbot-footer">
+                <form id="chatbot-form" class="chatbot-form">
+                    <input type="text" id="chatbot-input" class="chatbot-input" placeholder="اكتب سؤالك أو طلبك هنا..." autocomplete="off">
+                    <button type="submit" class="chatbot-send-btn" title="إرسال">
+                        <span>إرسال</span>
+                        <span class="send-icon">🚀</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- SCRIPT -->
     <script src="script.js"></script>
 </body>

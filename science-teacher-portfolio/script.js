@@ -437,5 +437,140 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
+    // ==================== INTERACTIVE FLOATING SCIENCE CHATBOT ====================
+    const chatbotToggleBtn = document.getElementById('chatbot-toggle-btn');
+    const chatbotWindow = document.getElementById('chatbot-window');
+    const chatbotCloseBtn = document.getElementById('chatbot-close-btn');
+    const chatbotBody = document.getElementById('chatbot-body');
+    const chatbotForm = document.getElementById('chatbot-form');
+    const chatbotInput = document.getElementById('chatbot-input');
+    const chatbotSuggestions = document.getElementById('chatbot-suggestions');
+    const chatbotBadge = document.querySelector('.chatbot-btn-badge');
+
+    const TELEGRAM_BOT_TOKEN = '8934848544:AAFtQ0l0aBlkjHN0qY2ISZeuy0QrHOWqhFM';
+    const TELEGRAM_CHAT_ID = '7226362241';
+
+    const CHATBOT_FAQS = {
+        "طريقة الحجز والأماكن": "📍 <b>أماكن الشرح وطريقة الحجز:</b><br>• سناتر ومقرات الشرح المتاحة.<br>• إمكانية المتابعة أونلاين عبر المنصة.<br>للحجز المباشر يمكنك ملء استمارة التواصل بالأسفل أو إرسال طلبك هنا فوراً 🚀",
+        "تفاصيل المنهج": "📚 <b>منهج علوم الصف الثالث الإعدادي:</b><br>1️⃣ القوى والحركة (الفيزياء)<br>2️⃣ الطاقة الضوئية (المرايا والعدسات)<br>3️⃣ الكون والنظام الشمسي<br>4️⃣ التكاثر واستمرار النوع (الأحياء)",
+        "نظام المتابعة": "📊 <b>نظام المتابعة الرقمي للأستاذ عاطف:</b><br>• تقارير أداء دورية تصل لولي الأمر.<br>• اختبارات قصيرة بعد كل وحدة لتحديد نقاط القوة والتحسين.<br>• متابعة واجبات الفيزياء ورسومات العدسات.",
+        "تواصل تليجرام": "📩 يمكنك كتابة استفسارك مباشرة هنا في مربع النص بالأسفل وسيقوم البوت بإرسال رسالتك فوراً لتليجرام الأستاذ عاطف 💬"
+    };
+
+    function appendMessage(text, sender = 'bot') {
+        if (!chatbotBody) return;
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `chatbot-message ${sender}`;
+        
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'msg-avatar';
+        avatarDiv.innerHTML = sender === 'bot' ? '🤖' : '👤';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'msg-content';
+        contentDiv.innerHTML = text;
+
+        msgDiv.appendChild(avatarDiv);
+        msgDiv.appendChild(contentDiv);
+        chatbotBody.appendChild(msgDiv);
+
+        chatbotBody.scrollTop = chatbotBody.scrollHeight;
+    }
+
+    if (chatbotToggleBtn && chatbotWindow) {
+        chatbotToggleBtn.addEventListener('click', () => {
+            chatbotWindow.classList.toggle('active');
+            if (chatbotBadge) chatbotBadge.style.display = 'none';
+        });
+
+        if (chatbotCloseBtn) {
+            chatbotCloseBtn.addEventListener('click', () => {
+                chatbotWindow.classList.remove('active');
+            });
+        }
+
+        // Suggestions chip clicks
+        if (chatbotSuggestions) {
+            chatbotSuggestions.querySelectorAll('.chatbot-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const question = chip.getAttribute('data-question');
+                    const textLabel = chip.innerText;
+
+                    appendMessage(textLabel, 'user');
+
+                    setTimeout(() => {
+                        let reply = CHATBOT_FAQS[question] || "أهلاً بك! كيف يمكنني مساعدتك اليوم؟";
+                        appendMessage(reply, 'bot');
+                    }, 500);
+                });
+            });
+        }
+
+        // Submit message form
+        if (chatbotForm && chatbotInput) {
+            chatbotForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const userMsg = chatbotInput.value.trim();
+                if (!userMsg) return;
+
+                appendMessage(userMsg, 'user');
+                chatbotInput.value = '';
+
+                // Check standard keywords first
+                const clean = userMsg.toLowerCase();
+                let isFaqMatched = false;
+
+                if (clean.includes('حجز') || clean.includes('مكان') || clean.includes('سنتر') || clean.includes('مواعيد')) {
+                    isFaqMatched = true;
+                    setTimeout(() => appendMessage(CHATBOT_FAQS["طريقة الحجز والأماكن"], 'bot'), 500);
+                } else if (clean.includes('منهج') || clean.includes('وحدات') || clean.includes('دروس')) {
+                    isFaqMatched = true;
+                    setTimeout(() => appendMessage(CHATBOT_FAQS["تفاصيل المنهج"], 'bot'), 500);
+                } else if (clean.includes('متابعة') || clean.includes('تقرير') || clean.includes('درجات')) {
+                    isFaqMatched = true;
+                    setTimeout(() => appendMessage(CHATBOT_FAQS["نظام المتابعة"], 'bot'), 500);
+                }
+
+                if (!isFaqMatched) {
+                    // Send to Telegram Bot Directly!
+                    appendMessage("⏳ جاري إرسال استفسارك لتليجرام الأستاذ عاطف...", 'bot');
+
+                    try {
+                        const tgText = `💬 <b>محادثة جديدة من شات الموقع — الأستاذ عاطف</b>\n\n` +
+                                       `👤 <b>الزائر:</b> مستخدم الموقع\n` +
+                                       `💬 <b>الرسالة:</b>\n${userMsg}\n\n` +
+                                       `⏰ <b>التوقيت:</b> ${new Date().toLocaleString('ar-EG')}`;
+
+                        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                chat_id: TELEGRAM_CHAT_ID,
+                                text: tgText,
+                                parse_mode: 'HTML'
+                            })
+                        });
+                        const data = await res.json();
+
+                        if (data.ok) {
+                            setTimeout(() => {
+                                appendMessage("✅ <b>تم إرسال رسالتك بنجاح إلى تليجرام الأستاذ عاطف!</b><br>سيتم التواصل معك والرد في أقرب وقت. ⚡", 'bot');
+                            }, 600);
+                        } else {
+                            throw new Error(data.description || 'فشل الإرسال');
+                        }
+                    } catch (err) {
+                        console.error('Chatbot Telegram Error:', err);
+                        setTimeout(() => {
+                            appendMessage("⚠️ لم نتمكن من الوصول للتليجرام الآن. يمكنك استخدام نموذج التواصل أسفل الصفحة أو التواصل عبر الواتساب المباشر.", 'bot');
+                        }, 600);
+                    }
+                }
+            });
+        }
+    }
+
 });
+
 
