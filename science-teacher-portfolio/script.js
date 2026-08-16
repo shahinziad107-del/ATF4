@@ -298,27 +298,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // ==================== CONTACT FORM (TELEGRAM BOT INTEGRATION) ====================
+    // ==================== CONTACT FORM (FAIL-PROOF TELEGRAM BOT + WHATSAPP FALLBACK) ====================
     const contactForm = document.querySelector('#contactForm');
     if (contactForm) {
-        // =========================================================================
-        // TELEGRAM BOT CONFIGURATION
-        // Replace TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID with Mr. Atef's credentials:
-        // Bot Token format: "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
-        // Chat ID format: "123456789" or "-100123456789"
-        // =========================================================================
         const TELEGRAM_BOT_TOKEN = '8934848544:AAFtQ0l0aBlkjHN0qY2ISZeuy0QrHOWqhFM';
         const TELEGRAM_CHAT_ID = '7226362241';
+        const TEACHER_WHATSAPP = '201012345678'; // Mr. Atef's WhatsApp number
 
         const formStatus = document.getElementById('formStatus');
 
-        function showFormStatus(msg, isSuccess = true) {
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function showFormStatus(msg, type = 'success') {
             if (!formStatus) return;
             formStatus.style.display = 'block';
-            if (isSuccess) {
+            if (type === 'success') {
                 formStatus.style.background = 'rgba(34, 197, 94, 0.15)';
                 formStatus.style.border = '1px solid rgba(34, 197, 94, 0.4)';
                 formStatus.style.color = '#4ade80';
+            } else if (type === 'warning') {
+                formStatus.style.background = 'rgba(234, 179, 8, 0.15)';
+                formStatus.style.border = '1px solid rgba(234, 179, 8, 0.4)';
+                formStatus.style.color = '#facc15';
             } else {
                 formStatus.style.background = 'rgba(239, 68, 68, 0.15)';
                 formStatus.style.border = '1px solid rgba(239, 68, 68, 0.4)';
@@ -347,49 +354,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (formStatus) formStatus.style.display = 'none';
 
-            // Construct Telegram HTML message format
-            const telegramText =
-                `📩 <b>طلب حجز حادي/جديد — الأستاذ عاطف</b>\n\n` +
-                `👨‍🎓 <b>اسم الطالب:</b> ${studentName}\n` +
-                `👤 <b>اسم ولي الأمر:</b> ${parentName}\n` +
-                `📱 <b>رقم الهاتف / الواتساب:</b> <code>${phone}</code>\n` +
-                `📚 <b>الصف الدراسي:</b> ${grade}\n\n` +
-                `💬 <b>الرسالة / الاستفسار:</b>\n${message}\n\n` +
-                `⏰ <b>توقيت الطلب:</b> ${new Date().toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })}`;
+            // Escape HTML for Telegram HTML mode
+            const safeStudent = escapeHTML(studentName);
+            const safeParent = escapeHTML(parentName);
+            const safePhone = escapeHTML(phone);
+            const safeGrade = escapeHTML(grade);
+            const safeMsg = escapeHTML(message);
+
+            const nowTime = new Date().toLocaleString('ar-EG');
+
+            // 1. Formatted HTML message
+            const telegramHtmlText = 
+                `📩 <b>طلب حجز جديد — الأستاذ عاطف</b>\n\n` +
+                `👨‍🎓 <b>اسم الطالب:</b> ${safeStudent}\n` +
+                `👤 <b>اسم ولي الأمر:</b> ${safeParent}\n` +
+                `📱 <b>رقم الهاتف / الواتساب:</b> <code>${safePhone}</code>\n` +
+                `📚 <b>الصف الدراسي:</b> ${safeGrade}\n\n` +
+                `💬 <b>الرسالة / الاستفسار:</b>\n${safeMsg}\n\n` +
+                `⏰ <b>توقيت الطلب:</b> ${nowTime}`;
+
+            // 2. Fallback Plain Text message
+            const plainText = 
+                `📩 طلب حجز جديد — الأستاذ عاطف\n\n` +
+                `👨‍🎓 اسم الطالب: ${studentName}\n` +
+                `👤 اسم ولي الأمر: ${parentName}\n` +
+                `📱 رقم الهاتف / الواتساب: ${phone}\n` +
+                `📚 الصف الدراسي: ${grade}\n\n` +
+                `💬 الرسالة / الاستفسار:\n${message}\n\n` +
+                `⏰ توقيت الطلب: ${nowTime}`;
 
             try {
-                // If token or chat ID is not configured yet
-                if (TELEGRAM_BOT_TOKEN === 'YOUR_TELEGRAM_BOT_TOKEN' || TELEGRAM_CHAT_ID === 'YOUR_TELEGRAM_CHAT_ID') {
-                    console.log('Telegram Payload Demo:', telegramText);
-                    showFormStatus('✅ تم تجهيز الرسالة! (يرجى إدخال Bot Token و Chat ID الخاص بمستر عاطف كود JS لتصلك الإشعارات مباشرة على التليجرام)', true);
-                    e.preventDefault();
-                    return;
-                }
-
-                const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                // Try sending HTML formatted message first
+                let response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: TELEGRAM_CHAT_ID,
-                        text: telegramText,
+                        text: telegramHtmlText,
                         parse_mode: 'HTML'
                     })
                 });
 
-                const data = await response.json();
+                let data = await response.json();
+
+                // If HTML mode failed, try sending plain text
+                if (!data.ok) {
+                    console.warn('HTML mode failed, retrying plain text...', data.description);
+                    response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: TELEGRAM_CHAT_ID,
+                            text: plainText
+                        })
+                    });
+                    data = await response.json();
+                }
 
                 if (data.ok) {
-                    showFormStatus('✅ تم إرسال طلب الحجز بنجاح إلى تليجرام الأستاذ عاطف! سيتم التواصل معكم في أقرب وقت.', true);
+                    showFormStatus('✅ تم إرسال طلب الحجز بنجاح إلى تليجرام الأستاذ عاطف! سيتم التواصل معكم في أقرب وقت.', 'success');
                     contactForm.reset();
                 } else {
-                    throw new Error(data.description || 'تعذر الإرسال عبر بوت تليجرام.');
+                    throw new Error(data.description || 'تعذر الإرسال عبر تليجرام');
                 }
 
             } catch (err) {
                 console.error('Telegram Send Error:', err);
-                showFormStatus(`❌ تعذر الإرسال التلقائي عبر المتصفح: (${err.message}).<br><a href="https://t.me/AtF_22_bot" target="_blank" style="color:#60a5fa;text-decoration:underline;margin-top:0.5rem;display:inline-block;">اضغط هنا لتأكيد الحجز فوراً عبر التليجرام 📲</a>`, false);
+                // WhatsApp fallback URL
+                const waUrl = `https://wa.me/${TEACHER_WHATSAPP}?text=${encodeURIComponent(plainText)}`;
+                showFormStatus(
+                    `❌ تعذر الإرسال المباشر لتليجرام بسبب الشبكة.<br><br>` +
+                    `<a href="${waUrl}" target="_blank" style="display:inline-block; padding: 0.6rem 1.2rem; background: #25D366; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 0.5rem;">📲 اضغط هنا لإرسال طلبك عبر الواتساب مباشرة</a>`,
+                    'warning'
+                );
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
