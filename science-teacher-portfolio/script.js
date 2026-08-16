@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (formStatus) formStatus.style.display = 'none';
 
             // Construct Telegram HTML message format
-            const telegramText = 
+            const telegramText =
                 `📩 <b>طلب حجز حادي/جديد — الأستاذ عاطف</b>\n\n` +
                 `👨‍🎓 <b>اسم الطالب:</b> ${studentName}\n` +
                 `👤 <b>اسم ولي الأمر:</b> ${parentName}\n` +
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (TELEGRAM_BOT_TOKEN === 'YOUR_TELEGRAM_BOT_TOKEN' || TELEGRAM_CHAT_ID === 'YOUR_TELEGRAM_CHAT_ID') {
                     console.log('Telegram Payload Demo:', telegramText);
                     showFormStatus('✅ تم تجهيز الرسالة! (يرجى إدخال Bot Token و Chat ID الخاص بمستر عاطف كود JS لتصلك الإشعارات مباشرة على التليجرام)', true);
-                    contactForm.reset();
+                    e.preventDefault();
                     return;
                 }
 
