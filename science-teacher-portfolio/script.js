@@ -438,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // ==================== INTERACTIVE FLOATING SCIENCE CHATBOT ====================
+    // ==================== 2-WAY LIVE CHATBOT (WEBSITE <-> TELEGRAM) ====================
     const chatbotToggleBtn = document.getElementById('chatbot-toggle-btn');
     const chatbotWindow = document.getElementById('chatbot-window');
     const chatbotCloseBtn = document.getElementById('chatbot-close-btn');
@@ -448,24 +448,66 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatbotSuggestions = document.getElementById('chatbot-suggestions');
     const chatbotBadge = document.querySelector('.chatbot-btn-badge');
 
-    const TELEGRAM_BOT_TOKEN = '8934848544:AAFtQ0l0aBlkjHN0qY2ISZeuy0QrHOWqhFM';
-    const TELEGRAM_CHAT_ID = '7226362241';
+    const CHATBOT_BOT_TOKEN = '8934848544:AAFtQ0l0aBlkjHN0qY2ISZeuy0QrHOWqhFM';
+    const CHATBOT_CHAT_ID = '7226362241';
+
+    // Unique Visitor Session ID (persisted per student browser)
+    let visitorId = localStorage.getItem('atef_visitor_id');
+    if (!visitorId) {
+        visitorId = 'V-' + Math.floor(1000 + Math.random() * 9000);
+        localStorage.setItem('atef_visitor_id', visitorId);
+    }
+
+    let lastUpdateId = parseInt(localStorage.getItem('atef_last_update_id') || '0', 10);
 
     const CHATBOT_FAQS = {
         "طريقة الحجز والأماكن": "📍 <b>أماكن الشرح وطريقة الحجز:</b><br>• سناتر ومقرات الشرح المتاحة.<br>• إمكانية المتابعة أونلاين عبر المنصة.<br>للحجز المباشر يمكنك ملء استمارة التواصل بالأسفل أو إرسال طلبك هنا فوراً 🚀",
         "تفاصيل المنهج": "📚 <b>منهج علوم الصف الثالث الإعدادي:</b><br>1️⃣ القوى والحركة (الفيزياء)<br>2️⃣ الطاقة الضوئية (المرايا والعدسات)<br>3️⃣ الكون والنظام الشمسي<br>4️⃣ التكاثر واستمرار النوع (الأحياء)",
         "نظام المتابعة": "📊 <b>نظام المتابعة الرقمي للأستاذ عاطف:</b><br>• تقارير أداء دورية تصل لولي الأمر.<br>• اختبارات قصيرة بعد كل وحدة لتحديد نقاط القوة والتحسين.<br>• متابعة واجبات الفيزياء ورسومات العدسات.",
-        "تواصل تليجرام": "📩 يمكنك كتابة استفسارك مباشرة هنا في مربع النص بالأسفل وسيقوم البوت بإرسال رسالتك فوراً لتليجرام الأستاذ عاطف 💬"
+        "تواصل تليجرام": "💬 <b>أنت الآن في المحادثة المباشرة مع مستر عاطف!</b><br>اكتب استفسارك هنا وسيقوم الأستاذ عاطف بالرد عليك من التليجرام مباشرة داخل هذا الشات. ⚡"
     };
 
-    function appendMessage(text, sender = 'bot') {
+    function escapeHTML(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function playNotificationSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.12, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+        } catch (e) {
+            // Audio context fallback ignore
+        }
+    }
+
+    function appendMessage(text, sender = 'bot', save = true) {
         if (!chatbotBody) return;
         const msgDiv = document.createElement('div');
         msgDiv.className = `chatbot-message ${sender}`;
         
         const avatarDiv = document.createElement('div');
         avatarDiv.className = 'msg-avatar';
-        avatarDiv.innerHTML = sender === 'bot' ? '🤖' : '👤';
+        if (sender === 'teacher') {
+            avatarDiv.innerHTML = '👨‍🏫';
+        } else if (sender === 'user') {
+            avatarDiv.innerHTML = '👤';
+        } else {
+            avatarDiv.innerHTML = '🤖';
+        }
         
         const contentDiv = document.createElement('div');
         contentDiv.className = 'msg-content';
@@ -476,9 +518,102 @@ document.addEventListener('DOMContentLoaded', () => {
         chatbotBody.appendChild(msgDiv);
 
         chatbotBody.scrollTop = chatbotBody.scrollHeight;
+
+        if (save) {
+            saveChatHistory();
+        }
+    }
+
+    function saveChatHistory() {
+        if (!chatbotBody) return;
+        const history = [];
+        chatbotBody.querySelectorAll('.chatbot-message').forEach(el => {
+            let sender = 'bot';
+            if (el.classList.contains('user')) sender = 'user';
+            if (el.classList.contains('teacher')) sender = 'teacher';
+            const content = el.querySelector('.msg-content')?.innerHTML || '';
+            history.push({ sender, content });
+        });
+        localStorage.setItem(`atef_chat_history_${visitorId}`, JSON.stringify(history.slice(-30)));
+    }
+
+    function loadChatHistory() {
+        const saved = localStorage.getItem(`atef_chat_history_${visitorId}`);
+        if (!saved || !chatbotBody) return;
+        try {
+            const history = JSON.parse(saved);
+            if (history.length > 0) {
+                chatbotBody.innerHTML = '';
+                history.forEach(item => {
+                    appendMessage(item.content, item.sender, false);
+                });
+            }
+        } catch (e) {}
+    }
+
+    // Poll Telegram for Mr. Atef's Live Replies
+    async function checkTelegramUpdates() {
+        try {
+            const url = `https://api.telegram.org/bot${CHATBOT_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&limit=10`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.ok && Array.isArray(data.result) && data.result.length > 0) {
+                data.result.forEach(update => {
+                    lastUpdateId = Math.max(lastUpdateId, update.update_id);
+                    localStorage.setItem('atef_last_update_id', lastUpdateId);
+
+                    const msg = update.message;
+                    if (!msg || !msg.text) return;
+
+                    let targetVisitorId = null;
+                    let replyText = msg.text.trim();
+
+                    // Method 1: Teacher replied directly to Telegram notification message
+                    if (msg.reply_to_message && msg.reply_to_message.text) {
+                        const originalText = msg.reply_to_message.text;
+                        const match = originalText.match(/#(V-\d{4})/);
+                        if (match) {
+                            targetVisitorId = match[1];
+                        }
+                    }
+
+                    // Method 2: Teacher typed "#V-1234 message text"
+                    if (!targetVisitorId) {
+                        const match = replyText.match(/^#(V-\d{4})\s+([\s\S]+)/);
+                        if (match) {
+                            targetVisitorId = match[1];
+                            replyText = match[2];
+                        }
+                    }
+
+                    // If this reply belongs to the current visitor:
+                    if (targetVisitorId === visitorId) {
+                        appendMessage(`👨‍🏫 <b>الأستاذ عاطف:</b><br>${escapeHTML(replyText)}`, 'teacher');
+                        playNotificationSound();
+
+                        if (chatbotWindow && !chatbotWindow.classList.contains('active')) {
+                            chatbotWindow.classList.add('active');
+                        }
+                        if (chatbotBadge) {
+                            chatbotBadge.style.display = 'flex';
+                            chatbotBadge.innerText = '💬 رد جديد';
+                        }
+                    }
+                });
+            }
+        } catch (err) {
+            // Ignore temporary network polling errors
+        }
     }
 
     if (chatbotToggleBtn && chatbotWindow) {
+        // Load history on initialization
+        loadChatHistory();
+
+        // Start Polling Telegram every 3 seconds for live replies from Mr. Atef
+        setInterval(checkTelegramUpdates, 3000);
+
         chatbotToggleBtn.addEventListener('click', () => {
             chatbotWindow.classList.toggle('active');
             if (chatbotBadge) chatbotBadge.style.display = 'none';
@@ -517,7 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appendMessage(userMsg, 'user');
                 chatbotInput.value = '';
 
-                // Check standard keywords first
+                // FAQ check
                 const clean = userMsg.toLowerCase();
                 let isFaqMatched = false;
 
@@ -532,39 +667,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => appendMessage(CHATBOT_FAQS["نظام المتابعة"], 'bot'), 500);
                 }
 
-                if (!isFaqMatched) {
-                    // Send to Telegram Bot Directly!
-                    appendMessage("⏳ جاري إرسال استفسارك لتليجرام الأستاذ عاطف...", 'bot');
+                // Forward ALL custom questions to Mr. Atef's Telegram with 2-Way Reply Capability!
+                const nowTime = new Date().toLocaleString('ar-EG');
+                const safeUserMsg = escapeHTML(userMsg);
 
-                    try {
-                        const tgText = `💬 <b>محادثة جديدة من شات الموقع — الأستاذ عاطف</b>\n\n` +
-                                       `👤 <b>الزائر:</b> مستخدم الموقع\n` +
-                                       `💬 <b>الرسالة:</b>\n${userMsg}\n\n` +
-                                       `⏰ <b>التوقيت:</b> ${new Date().toLocaleString('ar-EG')}`;
+                const tgText = 
+                    `💬 <b>محادثة شات جديدة من الموقع</b> 🌐\n` +
+                    `🆔 <b>كود الجلسة:</b> <code>#${visitorId}</code>\n\n` +
+                    `✉️ <b>رسالة الطالب:</b>\n${safeUserMsg}\n\n` +
+                    `⏰ <b>التوقيت:</b> ${nowTime}\n` +
+                    `-----------------------------------\n` +
+                    `↩️ <b>للرد على الطالب في الموقع:</b>\n` +
+                    `• اعمل <b>Reply (رد)</b> مباشر على هذه الرسالة هنا في التليجرام واكتب ردك.\n` +
+                    `• أو أرسل: <code>#${visitorId} نص الرد</code>`;
 
-                        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                chat_id: TELEGRAM_CHAT_ID,
-                                text: tgText,
-                                parse_mode: 'HTML'
-                            })
-                        });
-                        const data = await res.json();
+                try {
+                    const res = await fetch(`https://api.telegram.org/bot${CHATBOT_BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: CHATBOT_CHAT_ID,
+                            text: tgText,
+                            parse_mode: 'HTML'
+                        })
+                    });
+                    const data = await res.json();
 
+                    if (!isFaqMatched) {
                         if (data.ok) {
                             setTimeout(() => {
-                                appendMessage("✅ <b>تم إرسال رسالتك بنجاح إلى تليجرام الأستاذ عاطف!</b><br>سيتم التواصل معك والرد في أقرب وقت. ⚡", 'bot');
-                            }, 600);
+                                appendMessage(`💬 <b>تم إرسال استفسارك لمستر عاطف على التليجرام!</b> (كود المحادثة: <code>#${visitorId}</code>)<br>يمكنك البقاء في هذه الصفحة وسوف يصلك رد مستر عاطف المباشر هنا فوراً ⚡`, 'bot');
+                            }, 500);
                         } else {
-                            throw new Error(data.description || 'فشل الإرسال');
+                            throw new Error(data.description || 'تعذر الوصول للتليجرام');
                         }
-                    } catch (err) {
-                        console.error('Chatbot Telegram Error:', err);
+                    }
+                } catch (err) {
+                    console.error('Telegram Chatbot Error:', err);
+                    if (!isFaqMatched) {
                         setTimeout(() => {
-                            appendMessage("⚠️ لم نتمكن من الوصول للتليجرام الآن. يمكنك استخدام نموذج التواصل أسفل الصفحة أو التواصل عبر الواتساب المباشر.", 'bot');
-                        }, 600);
+                            appendMessage("⚠️ يتعذر الاتصال بالتليجرام حالياً. يمكنك استخدام نموذج التواصل بأسفل الصفحة.", 'bot');
+                        }, 500);
                     }
                 }
             });

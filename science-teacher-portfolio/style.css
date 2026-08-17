@@ -1880,6 +1880,22 @@ select.form-control option {
     border-color: rgba(56, 189, 248, 0.25);
 }
 
+.chatbot-message.teacher {
+    align-self: flex-start;
+}
+
+.chatbot-message.teacher .msg-avatar {
+    background: rgba(34, 197, 94, 0.25);
+    border: 1px solid rgba(34, 197, 94, 0.6);
+}
+
+.chatbot-message.teacher .msg-content {
+    border-radius: 16px 16px 16px 2px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 95, 70, 0.35));
+    border: 1px solid rgba(52, 211, 153, 0.5);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
+}
+
 .chatbot-suggestions {
     padding: 0.5rem 0.8rem;
     display: flex;
